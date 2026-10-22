@@ -1,0 +1,6 @@
+# runtime state / logs (never published)
+*.log
+state.json
+health.txt
+ATTENTION_REQUIRED.txt
+watchdog.txt

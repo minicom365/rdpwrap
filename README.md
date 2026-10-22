@@ -498,3 +498,5 @@ validates its structure, and atomically replaces the local INI with a timestampe
 - Install/uninstall: 	ools/safe-update/install-task.ps1 (-WhatIf, -Uninstall).
 
 See [tools/safe-update/README.md](tools/safe-update/README.md).
+
+For an internet-exposed RDP host where NLA cannot be enabled, see [tools/rdp-defense-kit](tools/rdp-defense-kit/README.md): brute-force guard, health check and a file-independent watchdog.
