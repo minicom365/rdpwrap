@@ -1,0 +1,14 @@
+# runtime artifacts
+*.log
+*.bak
+*.tmp
+audit_sanitize.json
+
+# OS noise
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# editor
+.vscode/
+.idea/

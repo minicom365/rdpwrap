@@ -481,3 +481,20 @@ Visit [issues](https://github.com/stascorp/rdpwrap/issues) section, and check wh
 - Go to the directory where you extracted the files
 - Right-click on **`uninstall.bat`** and select Run as Administrator
 - See command output for details
+
+---
+
+## Hardened autoupdate replacement (	ools/safe-update/)
+
+The upstream in/autoupdate.bat runs as SYSTEM and can download/execute .bat, .zip and .exe
+payloads from third-party GitHub repositories without any digest verification. 	ools/safe-update/
+contains a **drop-in replacement that only fetches the dpwrap.ini text** from a single HTTPS source,
+validates its structure, and atomically replaces the local INI with a timestamped backup.
+
+- Default mode is **DryRun**; -Apply is required to write.
+- It never downloads or executes executables/archives, never self-updates, never writes the registry,
+  and never restarts TermService unless -RestartService is given (and no RDP session is active).
+- On validation/hash failure it makes **no change** (fail-closed).
+- Install/uninstall: 	ools/safe-update/install-task.ps1 (-WhatIf, -Uninstall).
+
+See [tools/safe-update/README.md](tools/safe-update/README.md).
