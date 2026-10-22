@@ -88,3 +88,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install-defense-kit.ps1 -U
 ## 라이선스
 
 MIT (LICENSE 참조). 런타임에 내려받는 `rdpwrap.ini` 는 해당 업스트림 저장소의 콘텐츠이며 본 저장소에 포함하지 않습니다.
+
+### 콘솔 창이 뜨지 않는 이유
+
+알림기 작업은 `wscript.exe`(GUI 하위시스템)로 `notify-launcher.vbs`를 실행하고, 그 안에서 PowerShell을 **숨김 창(0)** 으로
+띄웁니다. 따라서 1분마다 명령 프롬프트가 깜빡이지 않습니다. 만약 창이 다시 보인다면 작업 경로가
+`notify-launcher.vbs`가 아닌 `powershell.exe`로 되돌아간 것이므로 `RESTORE.cmd`(또는 설치기)를 다시 실행하십시오.
+health-check가 이 상태를 `[2b] notifier` 항목에서 `silentLauncher=False`로 경고합니다.

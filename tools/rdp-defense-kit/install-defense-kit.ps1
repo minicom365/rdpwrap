@@ -57,7 +57,7 @@ if ($Uninstall) {
 }
 
 # ---------------------------------------------------------------- install
-foreach ($f in @('rdp-guard.ps1', 'safe-update.ps1', 'health-check.ps1', 'notify.ps1')) {
+foreach ($f in @('rdp-guard.ps1', 'safe-update.ps1', 'health-check.ps1', 'notify.ps1', 'notify-launcher.vbs')) {
     if (-not (Test-Path (Join-Path $here $f))) { Write-Host "[ERROR] missing source file: $f" -ForegroundColor Red; exit 1 }
 }
 
@@ -65,7 +65,7 @@ Write-Step "Target folder: $TargetDir"
 if (-not (Test-Path $TargetDir)) {
     if ($PSCmdlet.ShouldProcess($TargetDir, 'Create folder')) { New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null }
 }
-foreach ($f in @('rdp-guard.ps1', 'safe-update.ps1', 'health-check.ps1', 'notify.ps1', 'README.txt', 'RESTORE.cmd', 'UNINSTALL.cmd')) {
+foreach ($f in @('rdp-guard.ps1', 'safe-update.ps1', 'health-check.ps1', 'notify.ps1', 'notify-launcher.vbs', 'README.txt', 'RESTORE.cmd', 'UNINSTALL.cmd')) {
     $src = Join-Path $here $f
     if (Test-Path $src) {
         if ($PSCmdlet.ShouldProcess((Join-Path $TargetDir $f), 'Copy file')) {
@@ -155,18 +155,20 @@ if ($PSCmdlet.ShouldProcess('RDP Defense Watchdog', 'Register scheduled task')) 
     Write-Host '    registered: RDP Defense Watchdog (every 6h, file-independent, queues toast alerts)'
 }
 
-# 5) notifier — 로그온 사용자 세션에서 1분마다 큐를 비우며 토스트 표시 (SYSTEM 세션에서는 토스트가 보이지 않음)
+# 5) notifier — wscript(VBS) 런처로 숨김 실행: 매분 콘솔 창이 뜨지 않는다.
 $user = (Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue).UserName
 if ([string]::IsNullOrWhiteSpace($user)) { $user = "$env:USERDOMAIN\$env:USERNAME" }
 Write-Step "Notifier user: $user"
-$nAct = New-ScheduledTaskAction -Execute $ps51 -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -QueueDir "{1}" -DedupeMinutes 15' -f (Join-Path $TargetDir 'notify.ps1'), $QueueDir) -WorkingDirectory $TargetDir
+$wscript = "$env:SystemRoot\System32\wscript.exe"
+$launcher = Join-Path $TargetDir 'notify-launcher.vbs'
+$nAct = New-ScheduledTaskAction -Execute $wscript -Argument ('//nologo "{0}"' -f $launcher) -WorkingDirectory $TargetDir
 $nTrgLogon = New-ScheduledTaskTrigger -AtLogOn
 $nTrgRepeat = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
 $nSet = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
 $nPri = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 if ($PSCmdlet.ShouldProcess('RDP Defense Notifier', 'Register scheduled task')) {
     Register-ScheduledTask -TaskName 'RDP Defense Notifier' -Action $nAct -Trigger @($nTrgLogon, $nTrgRepeat) -Settings $nSet -Principal $nPri -Force | Out-Null
-    Write-Host '    registered: RDP Defense Notifier (every 1 min in the logged-on session)'
+    Write-Host '    registered: RDP Defense Notifier (every 1 min, silent VBS launcher, no console window)'
 }
 
 Write-Step 'Running the health check once...'

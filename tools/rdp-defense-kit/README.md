@@ -99,3 +99,10 @@ MIT (see `LICENSE`). The RDP Wrapper INI it may replace is third-party content f
 upstream repository; nothing from that repository is bundled here.
 
 한국어 요약은 [README_KO.md](README_KO.md)를 참고하세요.
+
+### No console window
+
+The notifier task starts `notify-launcher.vbs` through `wscript.exe` (GUI subsystem) and that launcher starts PowerShell
+with a **hidden window (0)**, so nothing flashes on the desktop every minute. If a window appears again, the task has been
+reverted to a plain `powershell.exe` action — re-run `RESTORE.cmd` / the installer. The health check reports this as
+`[2b] notifier ... silentLauncher=False`.

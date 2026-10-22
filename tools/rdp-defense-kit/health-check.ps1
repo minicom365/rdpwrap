@@ -74,7 +74,6 @@ $defs = @(
     @{ Name = 'RDP Wrapper Safe Update';     Args = $updateArgs; Kind = 'boot' },
     @{ Name = 'RDP Defense Health Check';    Args = $healthArgs; Kind = 'daily' }
 )
-
 foreach ($d in $defs) {
     $t = Get-ScheduledTask -TaskName $d.Name -ErrorAction SilentlyContinue
     if (-not $t) {
@@ -105,6 +104,29 @@ foreach ($d in $defs) {
     Add-Line ('  {0} task: {1} state={2} lastResult={3} pathOk={4}' -f $(if ($pathOk) { 'OK  ' } else { 'WARN' }), $d.Name, $t.State, $i.LastTaskResult, $pathOk)
     if ($t.State -eq 'Disabled') { $problems.Add("task disabled: $($d.Name)"); Add-Line ('  WARN disabled: {0}' -f $d.Name) }
     if (-not $pathOk) { $problems.Add("task points to old path: $($d.Name)"); Add-Line ('  WARN old path: {0} -> {1}' -f $d.Name, $act0.Arguments) }
+}
+
+# 2b) Notifier(토스트 알림기) 상태: 조용히 멈춰도 알아채기 어렵기 때문에 별도 확인
+Add-Line ''
+Add-Line '[2b] notifier (toast)'
+$notifier = Get-ScheduledTask -TaskName 'RDP Defense Notifier' -ErrorAction SilentlyContinue
+if (-not $notifier) {
+    Add-Line '  WARN notifier task missing'
+    $problems.Add('notifier task missing')
+} else {
+    $nArgs = [string]$notifier.Actions[0].Arguments
+    $silent = $nArgs -match 'notify-launcher\.vbs'
+    Add-Line ('  {0} notifier: {1} state={2} silentLauncher={3}' -f $(if ($silent) { 'OK  ' } else { 'WARN' }), $notifier.TaskName, $notifier.State, $silent)
+    if (-not $silent) { $problems.Add('notifier uses console launcher (window may flash)'); Add-Line '  WARN notifier is not using the silent VBS launcher (console window may appear each minute)' }
+    if ($notifier.State -eq 'Disabled') { $problems.Add('notifier task disabled'); Add-Line '  WARN notifier disabled' }
+    $nlog = 'C:\ProgramData\RDPGuardNotify\notify.log'
+    if (Test-Path -LiteralPath $nlog) {
+        $age = [int]((Get-Date) - (Get-Item $nlog).LastWriteTime).TotalMinutes
+        if ($age -le 10) { Add-Line ('  OK   notifier last activity {0} min ago' -f $age) }
+        else { Add-Line ('  WARN notifier last activity {0} min ago (>10m)' -f $age); $problems.Add('notifier silent for ' + $age + 'm') }
+    } else {
+        Add-Line '  WARN notifier has never logged (no toast delivered yet)'
+    }
 }
 
 # 3) 레거시 자동업데이트 비활성 여부

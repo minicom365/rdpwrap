@@ -60,3 +60,11 @@ Windows 토스트는 SYSTEM 세션에서 띄우면 사용자에게 보이지 않
   - "RDP Defense Notifier" 작업이 로그온된 사용자 세션에서 1분마다 큐를 비우며 토스트를 표시합니다.
 토스트가 실패하면 msg.exe로 폴백하며, 실패 사유는 notify.log에 남습니다.
 수동 테스트: powershell -NoProfile -File "%~dp0notify.ps1" -SelfTest
+
+콘솔 창이 뜨지 않는 이유
+------------------------
+알림기 작업은 wscript.exe(GUI 하위시스템)로 notify-launcher.vbs 를 실행하고, 그 안에서 PowerShell을 숨김 창(0)으로
+띄웁니다. 그래서 1분마다 명령 프롬프트가 깜빡이지 않습니다.
+창이 다시 보인다면 작업 실행 경로가 notify-launcher.vbs 가 아니라 powershell.exe 로 되돌아간 것이므로
+RESTORE.cmd(또는 install-defense-kit.ps1)를 다시 실행하십시오.
+health-check 의 [2b] notifier 항목이 silentLauncher 값을 표시합니다(False면 경고).
