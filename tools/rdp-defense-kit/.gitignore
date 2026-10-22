@@ -1,6 +1,8 @@
-# runtime state / logs (never published)
 *.log
 state.json
 health.txt
+notify-queue.jsonl
+notify-state.json
+notify-sent-*.log
 ATTENTION_REQUIRED.txt
 watchdog.txt

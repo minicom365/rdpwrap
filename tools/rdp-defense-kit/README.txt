@@ -52,3 +52,11 @@ Windows 방화벽 초기화(netsh advfirewall reset)나 정리 프로그램이 �
 ----
 - 이 스크립트는 시스템에 관리자 권한으로 작동합니다. 내용을 수정하지 마십시오.
 - 예약작업을 다시 등록하려면 RESTORE.cmd, 해제하려면 UNINSTALL.cmd (둘 다 관리자 권한).
+
+알림(토스트)
+------------
+Windows 토스트는 SYSTEM 세션에서 띄우면 사용자에게 보이지 않습니다. 그래서
+  - SYSTEM 작업(가드/점검/감시)은 C:\ProgramData\RDPGuardNotify\notify-queue.jsonl 에 경고를 적재하고
+  - "RDP Defense Notifier" 작업이 로그온된 사용자 세션에서 1분마다 큐를 비우며 토스트를 표시합니다.
+토스트가 실패하면 msg.exe로 폴백하며, 실패 사유는 notify.log에 남습니다.
+수동 테스트: powershell -NoProfile -File "%~dp0notify.ps1" -SelfTest

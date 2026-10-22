@@ -14,6 +14,31 @@ the guard, the RDP Wrapper updater, the health check and the watchdog can never 
 | `RDP Wrapper Safe Update` | boot +2 min | replaces the upstream `bin/autoupdate.bat` flow that downloads/executes `.bat`/`.zip`/`.exe` as SYSTEM. This only fetches `rdpwrap.ini` text from one HTTPS source, validates it, and swaps it atomically with a timestamped `.bak`. Fail-closed. |
 | `RDP Defense Health Check` | daily 09:00 | verifies scripts, task state/paths, legacy task disabled, guard freshness; **re-registers missing tasks**; writes `health.txt` and Application log entries 4001/4002. |
 | `RDP Defense Watchdog` | every 6 h | **file-independent** monitor: its logic lives inside the scheduled task, so it still runs if the folder is moved or deleted. Raises `C:\ProgramData\RDPGuardWatchdog\ATTENTION_REQUIRED.txt` and Application log entry **4010**. |
+| `RDP Defense Notifier` | every 1 min + at logon | runs in the **logged-on user session** and turns queued alerts into **Windows toast notifications**. SYSTEM/session-0 tasks cannot raise a toast by themselves, so this is the bridge. |
+
+## Notifications (Windows toast)
+
+The SYSTEM-side tasks do not toast directly (a toast raised from session 0 is never shown to the user). Instead they
+append one JSON line to a queue, and the notifier task drains it inside the user session:
+
+```
+C:\ProgramData\RDPGuardNotify\notify-queue.jsonl   <- written by guard/health/watchdog
+C:\ProgramData\RDPGuardNotify\notify.log           <- what was shown / dedupe info
+```
+
+- Toasts are attributed to Windows PowerShell (its AppUserModelID) so no Start-Menu shortcut registration is needed.
+- If toast creation fails, the notifier falls back to `msg.exe` and the failure is recorded in `notify.log`.
+- Duplicate alerts are suppressed for 15 minutes (`-DedupeMinutes`), and at most 3 toasts are shown per run.
+- The queue folder is writable by `Users` so the user-session notifier can clear it; treat toast content as
+  non-sensitive status text only.
+- Manual self-test: `powershell -NoProfile -File "<TargetDir>\notify.ps1" -SelfTest`
+
+| Source | Toast |
+|---|---|
+| Guard blocks an IP | "RDP 무차별 대입 차단" |
+| Health check finds a problem | "RDP 방어 점검 경고" |
+| Health check auto-repairs tasks | "RDP 방어 자동 복구" |
+| Watchdog finds a broken/moved defense | "RDP defense watchdog" |
 
 ## Quick start (Administrator PowerShell)
 

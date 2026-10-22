@@ -18,6 +18,18 @@ $repaired = New-Object System.Collections.Generic.List[string]
 
 function Add-Line([string]$s) { $lines.Add($s); Write-Host $s }
 
+function Add-Notify {
+    # SYSTEM 세션에서는 토스트가 보이지 않으므로 큐에 적재 → 사용자 세션 Notifier가 토스트 표시
+    param([string]$Title, [string]$Message, [string]$Level = 'WARN')
+    try {
+        $q = 'C:\ProgramData\RDPGuardNotify\notify-queue.jsonl'
+        $qd = Split-Path -Parent $q
+        if (-not (Test-Path $qd)) { New-Item -ItemType Directory -Force -Path $qd | Out-Null }
+        $obj = [pscustomobject]@{ At = (Get-Date).ToString('o'); Level = $Level; Title = $Title; Message = $Message }
+        ($obj | ConvertTo-Json -Compress) | Add-Content -LiteralPath $q -Encoding UTF8 -ErrorAction SilentlyContinue
+    } catch { }
+}
+
 Add-Line ('=== RDP Defense Health Check {0} ===' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))
 Add-Line ('Folder: {0}' -f $here)
 
@@ -154,6 +166,13 @@ try {
         Write-EventLog -LogName Application -Source $src -EntryType Information -EventId 4002 -Message ("RDP defense tasks auto-repaired: {0}" -f ($repaired -join ', '))
     }
 } catch { }
+
+# 사용자 세션 토스트 알림 큐 (SYSTEM 세션에서는 토스트가 직접 보이지 않음)
+if ($problems.Count -gt 0) {
+    Add-Notify -Title 'RDP 방어 점검 경고' -Message (("문제 {0}건: {1}" -f $problems.Count, (($problems | Select-Object -First 3) -join '; '))) -Level 'ERROR'
+} elseif ($repaired.Count -gt 0) {
+    Add-Notify -Title 'RDP 방어 자동 복구' -Message (("누락 작업을 재등록했습니다: {0}" -f ($repaired -join ', '))) -Level 'INFO'
+}
 
 if ($problems.Count -gt 0) { exit 1 }
 exit 0

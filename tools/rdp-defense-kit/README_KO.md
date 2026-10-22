@@ -11,6 +11,30 @@
 | `RDP Wrapper Safe Update` | 부팅+2분 | 기존 `autoupdate.bat`(SYSTEM 권한으로 `.bat`/`.zip`/`.exe` 다운로드·실행)을 대체. `rdpwrap.ini` 텍스트만 단일 HTTPS에서 받아 구조 검증 후 타임스탬프 `.bak` + 원자적 교체. 실패 시 무변경 |
 | `RDP Defense Health Check` | 매일 09:00 | 스크립트·작업 상태/경로·레거시 작업 비활성 여부·가드 신선도 점검. **누락된 작업 자동 재등록**. `health.txt` + 이벤트 4001/4002 |
 | `RDP Defense Watchdog` | 6시간 | **파일 독립형 감시자**. 감시 로직이 예약작업 안에 인라인으로 들어 있어 폴더를 옮기거나 지워도 계속 동작. `C:\ProgramData\RDPGuardWatchdog\ATTENTION_REQUIRED.txt` + 이벤트 **4010** |
+| `RDP Defense Notifier` | 1분 + 로그온 시 | **로그온된 사용자 세션**에서 실행되며 대기 중인 경고를 **Windows 토스트 알림**으로 표시. SYSTEM 세션에서는 토스트가 보이지 않으므로 이 작업이 다리 역할을 함 |
+
+## 알림(토스트)
+
+SYSTEM 권한 작업은 토스트를 직접 띄울 수 없습니다(세션 0에서 띄운 토스트는 사용자에게 표시되지 않음).
+그래서 SYSTEM 작업은 JSON 한 줄을 큐에 적재하고, 사용자 세션의 Notifier가 이를 읽어 토스트로 표시합니다.
+
+```
+C:\ProgramData\RDPGuardNotify\notify-queue.jsonl   <- 가드/점검/감시가 적재
+C:\ProgramData\RDPGuardNotify\notify.log           <- 표시 이력 / 중복 억제 기록
+```
+
+- 토스트는 Windows PowerShell의 AppUserModelID로 표시되므로 시작메뉴 바로가기 등록이 필요 없습니다.
+- 토스트 생성이 실패하면 `msg.exe`로 폴백하고 실패 사유를 `notify.log`에 남깁니다.
+- 중복 경고는 15분간 억제(`-DedupeMinutes`)되며 1회 실행당 최대 3개만 표시합니다.
+- 큐 폴더는 `Users`에게 수정 권한이 있습니다(사용자 세션 Notifier가 큐를 비워야 하므로). 토스트 내용에는 개인정보를 넣지 마십시오.
+- 수동 테스트: `powershell -NoProfile -File "<설치폴더>\notify.ps1" -SelfTest`
+
+| 발생원 | 토스트 |
+|---|---|
+| 가드가 IP 차단 | "RDP 무차별 대입 차단" |
+| 건강점검 문제 발견 | "RDP 방어 점검 경고" |
+| 건강점검 자동 복구 | "RDP 방어 자동 복구" |
+| Watchdog 이상 감지 | "RDP defense watchdog" |
 
 ## 설치 (관리자 PowerShell)
 
