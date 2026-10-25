@@ -1,0 +1,6 @@
+history/
+__pycache__/
+*.pyc
+*.bak-*
+rdpwrap-test*.ini
+_dll/
