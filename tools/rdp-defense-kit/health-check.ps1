@@ -119,13 +119,22 @@ if (-not $notifier) {
     Add-Line ('  {0} notifier: {1} state={2} silentLauncher={3}' -f $(if ($silent) { 'OK  ' } else { 'WARN' }), $notifier.TaskName, $notifier.State, $silent)
     if (-not $silent) { $problems.Add('notifier uses console launcher (window may flash)'); Add-Line '  WARN notifier is not using the silent VBS launcher (console window may appear each minute)' }
     if ($notifier.State -eq 'Disabled') { $problems.Add('notifier task disabled'); Add-Line '  WARN notifier disabled' }
-    $nlog = 'C:\ProgramData\RDPGuardNotify\notify.log'
-    if (Test-Path -LiteralPath $nlog) {
-        $age = [int]((Get-Date) - (Get-Item $nlog).LastWriteTime).TotalMinutes
-        if ($age -le 10) { Add-Line ('  OK   notifier last activity {0} min ago' -f $age) }
-        else { Add-Line ('  WARN notifier last activity {0} min ago (>10m)' -f $age); $problems.Add('notifier silent for ' + $age + 'm') }
+    # 알림 로그는 '토스트가 실제 표시된 경우'에만 갱신되므로, 로그 침묵은 정상일 수 있다.
+    # 따라서 로그 파일 나이가 아니라 Notifier 작업 자체의 마지막 실행/결과를 검사한다.
+    $ninfo = Get-ScheduledTaskInfo -TaskName 'RDP Defense Notifier' -ErrorAction SilentlyContinue
+    if ($ninfo -and $ninfo.LastRunTime) {
+        $age = [int]((Get-Date) - $ninfo.LastRunTime).TotalMinutes
+        $nres = $ninfo.LastTaskResult
+        # 267009 (0x41301) = 작업이 현재 실행 중
+        if ($age -le 10 -and ($nres -eq 0 -or $nres -eq 267009)) {
+            Add-Line ('  OK   notifier task ran {0} min ago (result={1})' -f $age, $nres)
+        } else {
+            Add-Line ('  WARN notifier task stale/failed: last {0} min ago (result={1})' -f $age, $nres)
+            $problems.Add('notifier task stale/failed: ' + $age + 'm, result=' + $nres)
+        }
     } else {
-        Add-Line '  WARN notifier has never logged (no toast delivered yet)'
+        Add-Line '  WARN notifier has no recorded run'
+        $problems.Add('notifier has no recorded run')
     }
 }
 
